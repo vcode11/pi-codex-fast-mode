@@ -1,7 +1,7 @@
 {
   "name": "@vcode11/pi-codex-fast-mode",
-  "version": "0.1.0",
-  "description": "OpenAI Codex Fast mode for Pi using the priority service tier and routing hint",
+  "version": "0.1.1",
+  "description": "OpenAI Fast mode for Pi using the priority service tier and Codex routing hint",
   "type": "module",
   "license": "MIT",
   "author": "Vishal Mishra",

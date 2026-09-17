@@ -20,6 +20,13 @@ const supportedModel = {
 	baseUrl: "https://chatgpt.com/backend-api",
 };
 
+const astraModel = {
+	provider: "openai",
+	id: "gpt-6-astra",
+	api: "openai-responses",
+	baseUrl: "https://api.openai.com/v1",
+};
+
 test("fast mode model allowlist matches the current Codex catalog", () => {
 	assert.deepEqual([...FAST_MODE_MODEL_IDS], [
 		"gpt-5.4",
@@ -35,6 +42,24 @@ test("fast mode model allowlist matches the current Codex catalog", () => {
 	assert.equal(supportsFastMode({ ...supportedModel, api: "anthropic-messages" }), false);
 	assert.equal(supportsFastMode({ ...supportedModel, baseUrl: "https://example.com" }), false);
 	assert.equal(supportsFastMode(undefined), false);
+});
+
+test("Astra fast mode is restricted to the official OpenAI Responses endpoint", () => {
+	assert.equal(supportsFastMode(astraModel), true);
+	assert.equal(supportsFastMode({ ...supportedModel, id: astraModel.id }), false);
+	for (const override of [
+		{ provider: "openai-codex" },
+		{ provider: "custom" },
+		{ api: "openai-completions" },
+		{ api: undefined },
+		{ baseUrl: "https://example.com/v1" },
+		{ baseUrl: "https://api.openai.com.evil.example/v1" },
+		{ baseUrl: undefined },
+		{ id: "gpt-6-unknown" },
+		{ id: "gpt-5.4-mini" },
+	]) {
+		assert.equal(supportsFastMode({ ...astraModel, ...override }), false);
+	}
 });
 
 test("priority request fields preserve the provider payload", () => {
@@ -74,7 +99,7 @@ test("settings path follows Pi tilde expansion", () => {
 	}
 });
 
-test("extension applies both Fast mode request signals and persists commands", async () => {
+test("extension persists Fast mode and switches between Codex and OpenAI request signals", async () => {
 	const configDirectory = await mkdtemp(join(tmpdir(), "pi-codex-fast-mode-"));
 	const previousConfigDirectory = process.env.PI_CODING_AGENT_DIR;
 	process.env.PI_CODING_AGENT_DIR = configDirectory;
@@ -148,13 +173,50 @@ test("extension applies both Fast mode request signals and persists commands", a
 		assert.deepEqual(customHeaders, {});
 		assert.equal(statuses.at(-1), "⚡ fast");
 
-		await command.handler("off", context);
+		context.model = astraModel;
+		await handlers.get("model_select")?.({ model: astraModel }, context);
+		assert.equal(statuses.at(-1), "⚡ fast");
+		await command.handler("status", context);
+		assert.deepEqual(notifications.at(-1), {
+			message: "Fast mode is on for openai/gpt-6-astra",
+			type: "info",
+		});
+		const astraPayload = { model: astraModel.id, stream: true, service_tier: "default" };
+		assert.deepEqual(
+			await handlers.get("before_provider_request")?.({ payload: astraPayload }, context),
+			{ ...astraPayload, service_tier: "priority" },
+		);
+		assert.equal(astraPayload.service_tier, "default");
+		const astraHeaders = { Accept: "application/json" };
+		await handlers.get("before_provider_headers")?.({ headers: astraHeaders }, context);
+		assert.deepEqual(astraHeaders, { Accept: "application/json" });
+		for (const payload of [null, "body", [], {}, { model: supportedModel.id }]) {
+			assert.equal(await handlers.get("before_provider_request")?.({ payload }, context), undefined);
+		}
+		const customAstraContext = {
+			...context,
+			model: { ...astraModel, baseUrl: "https://example.com/v1" },
+		};
 		assert.equal(
-			await handlers
-				.get("before_provider_request")
-				?.({ payload: { model: "gpt-5.6-sol" } }, context),
+			await handlers.get("before_provider_request")?.({ payload: astraPayload }, customAstraContext),
 			undefined,
 		);
+		await handlers.get("model_select")?.({ model: customAstraContext.model }, customAstraContext);
+		assert.equal(statuses.at(-1), "⚡ fast unavailable");
+		await handlers.get("session_start")?.({}, context);
+		assert.equal(statuses.at(-1), "⚡ fast");
+
+		await command.handler("off", context);
+		for (const model of [supportedModel, astraModel]) {
+			const disabledContext = { ...context, model };
+			assert.equal(
+				await handlers.get("before_provider_request")?.({ payload: { model: model.id } }, disabledContext),
+				undefined,
+			);
+			const disabledHeaders = {};
+			await handlers.get("before_provider_headers")?.({ headers: disabledHeaders }, disabledContext);
+			assert.deepEqual(disabledHeaders, {});
+		}
 		assert.equal(statuses.at(-1), undefined);
 		assert.deepEqual(JSON.parse(await readFile(join(configDirectory, "codex-fast-mode.json"), "utf8")), {
 			version: 1,

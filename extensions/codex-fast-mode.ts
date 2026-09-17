@@ -35,12 +35,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function supportsFastMode(model: ModelIdentity | undefined): boolean {
+function supportsCodexFastMode(model: ModelIdentity | undefined): boolean {
 	return (
 		model?.provider === "openai-codex" &&
 		model.api === CODEX_API &&
 		model.baseUrl === CODEX_BASE_URL &&
 		FAST_MODE_MODEL_IDS.has(model.id)
+	);
+}
+
+export function supportsFastMode(model: ModelIdentity | undefined): boolean {
+	return (
+		supportsCodexFastMode(model) ||
+		(model?.provider === "openai" &&
+			model.api === "openai-responses" &&
+			model.baseUrl === "https://api.openai.com/v1" &&
+			model.id === "gpt-6-astra")
 	);
 }
 
@@ -128,13 +138,13 @@ export default function codexFastMode(pi: ExtensionAPI): void {
 	let enabled = false;
 
 	pi.registerFlag("fast", {
-		description: "Enable OpenAI Codex Fast mode for this Pi process",
+		description: "Enable OpenAI Fast mode for this Pi process",
 		type: "boolean",
 		default: false,
 	});
 
 	pi.registerCommand("fast", {
-		description: "Toggle OpenAI Codex Fast mode or use on, off, status",
+		description: "Toggle OpenAI Fast mode or use on, off, status",
 		getArgumentCompletions: (prefix) => {
 			const options = ["on", "off", "status"].filter((option) => option.startsWith(prefix.trim().toLowerCase()));
 			return options.map((option) => ({ value: option, label: option }));
@@ -180,7 +190,7 @@ export default function codexFastMode(pi: ExtensionAPI): void {
 	});
 
 	pi.on("before_provider_headers", (event, ctx) => {
-		if (!enabled || !ctx.model || !supportsFastMode(ctx.model)) return;
+		if (!enabled || !ctx.model || !supportsCodexFastMode(ctx.model)) return;
 		setRoutingHint(event.headers, ctx.model);
 	});
 }

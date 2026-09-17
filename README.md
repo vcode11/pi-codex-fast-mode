@@ -1,8 +1,8 @@
 # Pi Codex Fast Mode
 
-Fast mode for OpenAI Codex models in [Pi](https://github.com/earendil-works/pi).
+Fast mode for OpenAI Codex models and GPT-6 Astra in [Pi](https://github.com/earendil-works/pi).
 
-The extension adds `/fast on|off|status` and `--fast`. It targets ChatGPT-authenticated `openai-codex` requests without inventing model IDs such as `gpt-5.5-fast`.
+The extension adds `/fast on|off|status` and `--fast`. It supports ChatGPT-authenticated `openai-codex` requests and API-key-authenticated `openai/gpt-6-astra` requests without inventing model IDs such as `gpt-5.5-fast`.
 
 ## Quick start
 
@@ -27,24 +27,27 @@ For one process, start Pi with `pi --fast`. `/fast` without an argument toggles 
 | `openai-codex/gpt-5.6-terra` | Yes |
 | `openai-codex/gpt-5.5` | Yes |
 | `openai-codex/gpt-5.4` | Yes |
-| `gpt-5.4-mini`, `gpt-5.3-codex-spark`, other providers | No |
+| `openai/gpt-6-astra` | Yes |
+| All other provider/model combinations | No |
 
-OpenAI currently documents roughly 1.5× generation speed and higher ChatGPT credit consumption: 2.5× for GPT-5.6/GPT-5.5 and 2× for GPT-5.4. See [Codex speed](https://developers.openai.com/codex/speed).
+Codex Fast mode consumes more ChatGPT credits; see [Codex speed](https://developers.openai.com/codex/speed). Astra uses API billing with a per-token premium, not ChatGPT credits. OpenAI accepts `service_tier: "priority"` as an alias for `"fast"`; the response reports the tier actually used and may fall back to `"default"`. See [API Fast mode](https://developers.openai.com/api/docs/guides/priority-processing).
 
 ## How it works
 
-For an enabled, supported request, the extension sends both signals used by current Codex clients:
+For an enabled, supported request:
 
-| Signal | Value |
-| --- | --- |
-| Responses payload | `service_tier: "priority"` |
-| Routing header | `x-codex-routing-hint: model=<model>;tier=priority` |
+| Signal | Codex | OpenAI Astra |
+| --- | --- | --- |
+| Responses payload | `service_tier: "priority"` | `service_tier: "priority"` |
+| Routing header | `x-codex-routing-hint: model=<model>;tier=priority` | Not added |
 
-The model allowlist prevents these fields from leaking to unrelated providers. The persisted setting lives at `~/.pi/agent/codex-fast-mode.json`, or under `PI_CODING_AGENT_DIR` when set.
+The extension checks the provider, API, base URL, and model. Codex requires `openai-codex-responses` at `https://chatgpt.com/backend-api`; Astra requires `openai-responses` at `https://api.openai.com/v1`. Custom endpoints and unrelated models remain untouched. The persisted setting lives at `~/.pi/agent/codex-fast-mode.json`, or under `PI_CODING_AGENT_DIR` when set.
 
 Pi briefly shipped `-fast` model aliases, then removed them because ChatGPT Codex rejected those model IDs. Pi maintainers chose an extension over a provider-wide abstraction in [issue #4643](https://github.com/earendil-works/pi/issues/4643). This package implements the request-tier mechanism instead.
 
 ## Verification
+
+On 2026-09-17, a GPT-6 Astra Responses API smoke request with `service_tier: "priority"` completed with HTTP 200 and reported `service_tier: "fast"`. This confirms tier selection, not a measured Astra speedup.
 
 On 2026-08-11, three paired `gpt-5.6-luna` runs each reported 3,892 output characters:
 
@@ -68,6 +71,7 @@ Requires Pi 0.84.1 and Node.js 22.19 or newer. The extension has no runtime depe
 ## References
 
 - [OpenAI Codex Fast mode](https://developers.openai.com/codex/speed)
+- [OpenAI API Fast mode](https://developers.openai.com/api/docs/guides/priority-processing)
 - [Pi issue #4643](https://github.com/earendil-works/pi/issues/4643)
 - [Pi removal commit](https://github.com/earendil-works/pi/commit/266234047ab55cc6082aa6e28021112e8884c065)
 - [OpenAI Codex routing-hint commit](https://github.com/openai/codex/commit/270d93268ce9)
