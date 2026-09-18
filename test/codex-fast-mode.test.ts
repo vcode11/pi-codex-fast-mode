@@ -34,8 +34,10 @@ test("fast mode model allowlist matches the current Codex catalog", () => {
 		"gpt-5.6-luna",
 		"gpt-5.6-sol",
 		"gpt-5.6-terra",
+		"gpt-6-astra",
 	]);
 	assert.equal(supportsFastMode(supportedModel), true);
+	assert.equal(supportsFastMode({ ...supportedModel, id: "gpt-6-astra" }), true);
 	assert.equal(supportsFastMode({ ...supportedModel, id: "gpt-5.4-mini" }), false);
 	assert.equal(supportsFastMode({ ...supportedModel, id: "gpt-5.3-codex-spark" }), false);
 	assert.equal(supportsFastMode({ ...supportedModel, provider: "openai" }), false);
@@ -44,9 +46,8 @@ test("fast mode model allowlist matches the current Codex catalog", () => {
 	assert.equal(supportsFastMode(undefined), false);
 });
 
-test("Astra fast mode is restricted to the official OpenAI Responses endpoint", () => {
+test("API-key Astra fast mode is restricted to the official OpenAI Responses endpoint", () => {
 	assert.equal(supportsFastMode(astraModel), true);
-	assert.equal(supportsFastMode({ ...supportedModel, id: astraModel.id }), false);
 	for (const override of [
 		{ provider: "openai-codex" },
 		{ provider: "custom" },
