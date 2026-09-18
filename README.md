@@ -2,7 +2,7 @@
 
 Fast mode for OpenAI Codex models and GPT-6 Astra in [Pi](https://github.com/earendil-works/pi).
 
-The extension adds `/fast on|off|status` and `--fast`. It supports ChatGPT-authenticated `openai-codex` requests and API-key-authenticated `openai/gpt-6-astra` requests without inventing model IDs such as `gpt-5.5-fast`.
+The extension adds `/fast on|off|status` and `--fast`. It supports ChatGPT-authenticated `openai-codex` requests, including GPT-6 Astra, and API-key-authenticated `openai/gpt-6-astra` requests without inventing model IDs such as `gpt-5.5-fast`.
 
 ## Quick start
 
@@ -27,10 +27,11 @@ For one process, start Pi with `pi --fast`. `/fast` without an argument toggles 
 | `openai-codex/gpt-5.6-terra` | Yes |
 | `openai-codex/gpt-5.5` | Yes |
 | `openai-codex/gpt-5.4` | Yes |
+| `openai-codex/gpt-6-astra` | Yes |
 | `openai/gpt-6-astra` | Yes |
 | All other provider/model combinations | No |
 
-Codex Fast mode consumes more ChatGPT credits; see [Codex speed](https://developers.openai.com/codex/speed). Astra uses API billing with a per-token premium, not ChatGPT credits. OpenAI accepts `service_tier: "priority"` as an alias for `"fast"`; the response reports the tier actually used and may fall back to `"default"`. See [API Fast mode](https://developers.openai.com/api/docs/guides/priority-processing).
+Codex Fast mode consumes more ChatGPT credits; see [Codex speed](https://developers.openai.com/codex/speed). The Codex model catalog advertises the `priority` tier for `gpt-6-astra` as "2x speed, increased usage". API-key Astra uses API billing with a per-token premium, not ChatGPT credits. OpenAI accepts `service_tier: "priority"` as an alias for `"fast"`; the response reports the tier actually used and may fall back to `"default"`. See [API Fast mode](https://developers.openai.com/api/docs/guides/priority-processing).
 
 ## How it works
 
